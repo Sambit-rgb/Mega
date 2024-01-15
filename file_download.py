@@ -1,23 +1,43 @@
-# In this program we are using mega library and downloading each file
-from mega import Mega
+import requests
+from bs4 import BeautifulSoup
 import os
 
-mega = Mega()
+# URL of the page
+url = 'https://mega.nz/desktop'
 
-# Login to your MEGA account
-m = mega.login('email@email.com', 'password')
+# Send a GET request
+response = requests.get(url)
 
-# Specify the folder
-folder_name = 'linux-platform'
+# If the GET request is successful, the status code will be 200
+if response.status_code == 200:
+    # Get the content of the response
+    page_content = response.content
 
-# Get the folder object using the folder's URL or ID
-folder = m.find(folder_name)
+    # Create a BeautifulSoup object and specify the parser
+    soup = BeautifulSoup(page_content, 'html.parser')
 
-if folder is not None:
-    # Get all files in the folder
-    files = m.get_files_in_node(folder[0])
+    # Find all links on the page
+    links = soup.find_all('a')
 
-    # Download each file
-    for file in files:
-        public_link = m.get_link(file)
-        m.download_url(public_link)
+    # Filter the links for those that are for Linux distributions
+    linux_links = [link.get('href') for link in links if link.get('href') is not None and 'linux' in link.get('href')]
+
+    # Check each link
+    for link in linux_links:
+        response = requests.get(link, stream=True)
+
+        # If the GET request is successful, the status code will be 200
+        if response.status_code == 200:
+            print(f'The URL {link} is reachable.')
+
+            # Download the file
+            local_filename = link.split('/')[-1]
+            with open(local_filename, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk:
+                        f.write(chunk)
+            print(f'The file {local_filename} has been downloaded.')
+        else:
+            print(f'The URL {link} is not reachable.')
+else:
+    print(f'The URL {url} is not reachable.')
